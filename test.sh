@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+SERVER_RSA=ssh/id_rsa_server
+CLIENT_RSA=ssh/id_rsa_client
+KNOWN_HOSTS=ssh/known_hosts
+
+usage() {
+cat <<USAGE
+usage: $0 ACTION
+
+Build and run containers to test out the Foreman Remote Execution plugin
+
+  # generate keys and build docker image first:
+  $0 build
+
+  # run container using the image
+  $0 run -c $CONTAINER_NAME
+
+  # ssh to the machine
+  $0 ssh -c $CONTAINER_NAME
+USAGE
+}
+
+ACTION=$1
+shift || :
+
+while getopts "c:f" opt; do
+   case $opt in
+     i)
+       IMAGE_NAME="$OPTARG"
+       ;;
+     c)
+       CONTAINER_NAME="$OPTARG"
+       ;;
+     f)
+       FORCE=1
+       ;;
+   esac
+done
+
+IMAGE_NAME=${IMAGE_NAME:-foreman_remote_execution_target}
+
+if [ -z "$CONTAINER_NAME" ]; then
+   CONTAINER_NAME="${IMAGE_NAME}_1"
+fi
+
+_build() {
+    for key in $SERVER_RSA $CLIENT_RSA; do
+        if ! [ -e $key ]; then
+            echo "Generating $key…"
+            ssh-keygen -t rsa -b 4096 -f $key -N ''
+        fi
+    done
+
+    docker build -t $IMAGE_NAME .
+}
+
+_run() {
+    if docker inspect $CONTAINER_NAME > /dev/null; then
+        echo "Container $CONTAINER_NAME exist"
+        if [ "$FORCE" = "1" ]; then
+            echo "forced deletion"
+            docker rm -f $CONTAINER_NAME
+        else
+            exit 2
+        fi
+    fi
+
+    CID=$(docker run -d --name $CONTAINER_NAME $IMAGE_NAME)
+    IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CID)
+    if [ -z "$IP" ]; then
+        echo "Could not get the container IP address"
+        exit 3
+    fi
+    echo "Container IP address is $IP"
+    sed -i /^$IP/d $KNOWN_HOSTS
+    echo $IP $(cat ${SERVER_RSA}.pub) >> $KNOWN_HOSTS
+}
+
+_ssh() {
+    IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CONTAINER_NAME) || :
+    if [ -z "$IP" ]; then
+        echo "Could not find the container IP address, have you run '$0 run' before"
+        exit 4
+    fi
+    SSH_USER=root
+    echo "ssh as a ${SSH_USER} to ${CONTAINER_NAME} ($IP)"
+
+    ssh $SSH_USER@${IP} -F ssh/config
+}
+
+case "$ACTION" in
+    build)
+        _build
+        ;;
+    run)
+        _run
+        ;;
+    ssh)
+        _ssh
+        ;;
+    "")
+        echo "ACTION not specified"
+        usage
+        exit 1
+        ;;
+    *)
+        echo "Unknon action "$ACTION""
+        usage
+        exit 1
+        ;;
+esac
+

@@ -1,0 +1,3 @@
+Host *
+  IdentityFile ssh/id_rsa_client
+  UserKnownHostsFile ssh/known_hosts
