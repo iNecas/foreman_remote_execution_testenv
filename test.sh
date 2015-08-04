@@ -7,6 +7,12 @@ SERVER_RSA=ssh/id_rsa_server
 CLIENT_RSA=ssh/id_rsa_client
 KNOWN_HOSTS=ssh/known_hosts
 
+MASTER_IP=$(ip -4 addr show docker0 | grep -o 'inet.*' | grep -oP '\d+\.\d+\.\d+\.\d+')
+if ! [ -e settings.sh ]; then
+    cp settings.sh.example settings.sh
+fi
+. settings.sh
+
 usage() {
 cat <<USAGE
 usage: $0 ACTION
@@ -41,10 +47,10 @@ while getopts "c:f" opt; do
    esac
 done
 
-IMAGE_NAME=${IMAGE_NAME:-foreman_remote_execution_target}
+IMAGE_NAME=${IMAGE_NAME:-foreman-remote-execution-target}
 
 if [ -z "$CONTAINER_NAME" ]; then
-   CONTAINER_NAME="${IMAGE_NAME}_1"
+   CONTAINER_NAME="${IMAGE_NAME}-1"
 fi
 
 _build() {
@@ -59,7 +65,7 @@ _build() {
 }
 
 _run() {
-    if docker inspect $CONTAINER_NAME > /dev/null; then
+    if docker inspect $CONTAINER_NAME &> /dev/null; then
         echo "Container $CONTAINER_NAME exist"
         if [ "$FORCE" = "1" ]; then
             echo "forced deletion"
@@ -69,7 +75,12 @@ _run() {
         fi
     fi
 
-    CID=$(docker run -d --name $CONTAINER_NAME $IMAGE_NAME)
+    HOST_NAME=$(echo $CONTAINER_NAME | sed 's/_/-/g')
+
+    if ! FOREMAN_URL=$FOREMAN_URL FOREMAN_USER=$FOREMAN_USER FOREMAN_PASSWORD=$FOREMAN_PASSWORD ./scripts/register-host.sh foreman_check; then
+        exit 4
+    fi
+    CID=$(docker run -d -e "HOST_NAME=$HOST_NAME" -e "FOREMAN_URL=$FOREMAN_URL" -e "FOREMAN_USER=$FOREMAN_USER" -e "FOREMAN_PASSWORD=$FOREMAN_PASSWORD" --name $CONTAINER_NAME $IMAGE_NAME)
     IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CID)
     if [ -z "$IP" ]; then
         echo "Could not get the container IP address"
