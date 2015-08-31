@@ -4,7 +4,7 @@ set -eo pipefail
 
 SOURCE="${BASH_SOURCE[0]}"
 SERVER_RSA=ssh/id_rsa_server
-CLIENT_RSA=ssh/id_rsa_client
+CLIENT_RSA=ssh/id_rsa_foreman_proxy
 KNOWN_HOSTS=ssh/known_hosts
 
 MASTER_IP=$(ip -4 addr show docker0 | grep -o 'inet.*' | grep -oP '\d+\.\d+\.\d+\.\d+')
@@ -77,10 +77,10 @@ _run() {
 
     HOST_NAME=$(echo $CONTAINER_NAME | sed 's/_/-/g')
 
-    if ! FOREMAN_URL=$FOREMAN_URL FOREMAN_USER=$FOREMAN_USER FOREMAN_PASSWORD=$FOREMAN_PASSWORD ./scripts/register-host.sh foreman_check; then
+    if ! PROXY_URL=$PROXY_URL FOREMAN_URL=$FOREMAN_URL FOREMAN_USER=$FOREMAN_USER FOREMAN_PASSWORD=$FOREMAN_PASSWORD ./scripts/register-host.sh check; then
         exit 4
     fi
-    CID=$(docker run -d -e "HOST_NAME=$HOST_NAME" -e "FOREMAN_URL=$FOREMAN_URL" -e "FOREMAN_USER=$FOREMAN_USER" -e "FOREMAN_PASSWORD=$FOREMAN_PASSWORD" --name $CONTAINER_NAME $IMAGE_NAME)
+    CID=$(docker run -d -e "HOST_NAME=$HOST_NAME" -e "PROXY_URL=$PROXY_URL" -e "FOREMAN_URL=$FOREMAN_URL" -e "FOREMAN_USER=$FOREMAN_USER" -e "FOREMAN_PASSWORD=$FOREMAN_PASSWORD" --name $CONTAINER_NAME $IMAGE_NAME)
     IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CID)
     if [ -z "$IP" ]; then
         echo "Could not get the container IP address"
@@ -100,7 +100,7 @@ _ssh() {
     SSH_USER=root
     echo "ssh as a ${SSH_USER} to ${CONTAINER_NAME} ($IP)"
 
-    ssh $SSH_USER@${IP} -F ssh/config
+    ssh $SSH_USER@${IP} -F ssh/config -v
 }
 
 case "$ACTION" in
