@@ -53,6 +53,10 @@ if [ -z "$CONTAINER_NAME" ]; then
    CONTAINER_NAME="${IMAGE_NAME}-1"
 fi
 
+load-ip() {
+    docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CONTAINER_NAME || :
+}
+
 _build() {
     for key in $SERVER_RSA $CLIENT_RSA; do
         if ! [ -e $key ]; then
@@ -92,7 +96,7 @@ _run() {
 }
 
 _ssh() {
-    IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CONTAINER_NAME) || :
+    IP=$(load-ip)
     if [ -z "$IP" ]; then
         echo "Could not find the container IP address, have you run '$0 run' before"
         exit 4
@@ -101,6 +105,11 @@ _ssh() {
     echo "ssh as a ${SSH_USER} to ${CONTAINER_NAME} ($IP)"
 
     ssh $SSH_USER@${IP} -F ssh/config -v
+}
+
+_ansible-inventory() {
+    IP=$(load-ip)
+    echo ${CONTAINER_NAME} ansible_ssh_host=${IP}
 }
 
 case "$ACTION" in
@@ -112,6 +121,9 @@ case "$ACTION" in
         ;;
     ssh)
         _ssh
+        ;;
+    ansible-inventory)
+        _ansible-inventory
         ;;
     "")
         echo "ACTION not specified"
