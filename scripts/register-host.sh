@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# FOREMAN_URL=http://172.17.42.1:3000 PROXY_URL=http://172.17.42.1:9292 FOREMAN_USER=admin FOREMAN_PASSWORD=changeme HOST_NAME=$(hostname -f) /register-host.sh
+
+set -x
 
 if [ -z "$FOREMAN_URL" ]; then
     echo "FOREMAN_URL missing"

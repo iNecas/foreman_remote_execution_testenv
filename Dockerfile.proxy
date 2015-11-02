@@ -1,0 +1,28 @@
+# foreman remote execution proxy container
+#
+# VERSION               0.0.1
+
+FROM centos:7
+MAINTAINER Ivan Nečas <inecas@redhat.com>
+
+RUN yum install -y hostname openssh-server openssh-clients
+RUN yum install -y gcc-c++ ruby-devel make krb5-devel augeas-devel sqlite-devel rubygem-bundler git
+
+ADD proxy-src /root/proxy-src
+
+RUN mkdir -m 700 /root/.ssh
+ADD ssh/id_rsa_foreman_proxy /root/.ssh/id_rsa_foreman_proxy
+ADD ssh/id_rsa_foreman_proxy.pub /root/.ssh/id_rsa_foreman_proxy.pub
+RUN chmod 600 /root/.ssh/id_rsa_foreman_proxy
+
+ADD ssh/id_rsa_server /etc/ssh/ssh_host_rsa_key
+ADD ssh/id_rsa_server.pub /etc/ssh/ssh_host_rsa_key.pub
+ADD ssh/id_rsa_foreman_proxy.pub /root/.ssh/authorized_keys
+RUN chmod 600 /root/.ssh/authorized_keys
+
+ADD scripts/proxy-install.sh proxy-install.sh
+RUN ./proxy-install.sh
+ADD scripts/proxy-start.sh proxy-start.sh
+
+EXPOSE 9292
+CMD ["./proxy-start.sh"]

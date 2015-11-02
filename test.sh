@@ -33,8 +33,11 @@ USAGE
 ACTION=$1
 shift || :
 
-while getopts "c:f" opt; do
+while getopts "c:t:f" opt; do
    case $opt in
+     t)
+       IMAGE_TYPE="$OPTARG"
+       ;;
      i)
        IMAGE_NAME="$OPTARG"
        ;;
@@ -47,10 +50,17 @@ while getopts "c:f" opt; do
    esac
 done
 
-IMAGE_NAME=${IMAGE_NAME:-foreman-remote-execution-target}
+IMAGE_TYPE=${IMAGE_TYPE:-client}
+if [ "$IMAGE_TYPE" = "proxy" ]; then
+    IMAGE_NAME=${IMAGE_NAME:-foreman-proxy.local.test}
+    DOCKER_FILE=Dockerfile.proxy
+else
+    IMAGE_NAME=${IMAGE_NAME:-foreman-rex-client.local.test}
+    DOCKER_FILE=Dockerfile
+fi
 
 if [ -z "$CONTAINER_NAME" ]; then
-   CONTAINER_NAME="${IMAGE_NAME}-1"
+   CONTAINER_NAME="${IMAGE_NAME}"
 fi
 
 load-ip() {
@@ -65,7 +75,11 @@ _build() {
         fi
     done
 
-    docker build -t $IMAGE_NAME .
+    docker build -f $DOCKER_FILE -t $IMAGE_NAME .
+}
+
+_stop() {
+  docker stop $CONTAINER_NAME
 }
 
 _run() {
@@ -73,18 +87,27 @@ _run() {
         echo "Container $CONTAINER_NAME exist"
         if [ "$FORCE" = "1" ]; then
             echo "forced deletion"
-            docker rm -f $CONTAINER_NAME
+            docker rm -f $CONTAINER_NAME || :
         else
             exit 2
         fi
     fi
 
-    HOST_NAME=$(echo $CONTAINER_NAME | sed 's/_/-/g')
-
-    if ! PROXY_URL=$PROXY_URL FOREMAN_URL=$FOREMAN_URL FOREMAN_USER=$FOREMAN_USER FOREMAN_PASSWORD=$FOREMAN_PASSWORD ./scripts/register-host.sh check; then
-        exit 4
+    DOCKER_OPTIONS="-d"
+    if [ -n "$SRC_DIR" ]; then
+        DOCKER_OPTIONS="$DOCKER_OPTIONS -v $SRC_DIR:/opt/src"
     fi
-    CID=$(docker run -d -e "HOST_NAME=$HOST_NAME" -e "PROXY_URL=$PROXY_URL" -e "FOREMAN_URL=$FOREMAN_URL" -e "FOREMAN_USER=$FOREMAN_USER" -e "FOREMAN_PASSWORD=$FOREMAN_PASSWORD" --name $CONTAINER_NAME $IMAGE_NAME)
+
+    case "$IMAGE_TYPE" in
+        client)
+            HOST_NAME=$(echo $CONTAINER_NAME | sed 's/_/-/g')
+
+            if ! PROXY_URL=$PROXY_URL FOREMAN_URL=$FOREMAN_URL FOREMAN_USER=$FOREMAN_USER FOREMAN_PASSWORD=$FOREMAN_PASSWORD ./scripts/register-host.sh check; then
+                exit 4
+            fi
+            ;;
+    esac
+    CID=$(docker run $DOCKER_OPTIONS -h "$HOST_NAME" -e "HOST_NAME=$HOST_NAME" -e "PROXY_URL=$PROXY_URL" -e "FOREMAN_URL=$FOREMAN_URL" -e "FOREMAN_USER=$FOREMAN_USER" -e "FOREMAN_PASSWORD=$FOREMAN_PASSWORD" --name $CONTAINER_NAME $IMAGE_NAME)
     IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CID)
     if [ -z "$IP" ]; then
         echo "Could not get the container IP address"
@@ -122,6 +145,9 @@ case "$ACTION" in
     ssh)
         _ssh
         ;;
+    stop)
+        _stop
+        ;;
     ansible-inventory)
         _ansible-inventory
         ;;
@@ -136,4 +162,3 @@ case "$ACTION" in
         exit 1
         ;;
 esac
-
