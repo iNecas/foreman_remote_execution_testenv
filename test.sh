@@ -48,10 +48,7 @@ while getopts "c:f" opt; do
 done
 
 IMAGE_NAME=${IMAGE_NAME:-foreman-remote-execution-target}
-
-if [ -z "$CONTAINER_NAME" ]; then
-   CONTAINER_NAME="${IMAGE_NAME}-1"
-fi
+CONTAINER_NAME=${CONTAINER_NAME:-client.foreman.test}
 
 _build() {
     for key in $SERVER_RSA $CLIENT_RSA; do
@@ -67,7 +64,7 @@ _build() {
 _run() {
     MAC=$(docker inspect --format '{{ .NetworkSettings.MacAddress }}' $CONTAINER_NAME 2>/dev/null || :)
     if [ -n "$MAC" ]; then
-        echo "Container $CONTAINER_NAME exist"
+        echo "Container $CONTAINER_NAME exist. Use 'run -f' to force the container deletion "
         if [ "$FORCE" = "1" ]; then
             echo "forced deletion"
             docker rm -f $CONTAINER_NAME
@@ -87,7 +84,7 @@ _run() {
         echo "Could not get the container IP address"
         exit 3
     fi
-    echo "Container IP address is $IP"
+    echo "IP address of '$CONTAINER_NAME' is $IP"
     sed -i /^$IP/d $KNOWN_HOSTS
     echo $IP $(cat ${SERVER_RSA}.pub) >> $KNOWN_HOSTS
 }
