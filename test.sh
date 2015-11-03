@@ -49,6 +49,7 @@ done
 
 IMAGE_NAME=${IMAGE_NAME:-foreman-remote-execution-target}
 CONTAINER_NAME=${CONTAINER_NAME:-client.foreman.test}
+MAC="52:54:00$(echo "$(hostname)$CONTAINER_NAME" | openssl dgst -md5 -binary | hexdump -e '/1 ":%02x"' -n 3)"
 
 _build() {
     for key in $SERVER_RSA $CLIENT_RSA; do
@@ -62,8 +63,8 @@ _build() {
 }
 
 _run() {
-    MAC=$(docker inspect --format '{{ .NetworkSettings.MacAddress }}' $CONTAINER_NAME 2>/dev/null || :)
-    if [ -n "$MAC" ]; then
+    if docker inspect $CONTAINER_NAME ; then
+        echo "mac is $MAC"
         echo "Container $CONTAINER_NAME exist. Use 'run -f' to force the container deletion "
         if [ "$FORCE" = "1" ]; then
             echo "forced deletion"
