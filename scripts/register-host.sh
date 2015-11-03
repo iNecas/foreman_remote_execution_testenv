@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x
 
 if [ -z "$FOREMAN_URL" ]; then
     echo "FOREMAN_URL missing"
@@ -49,28 +50,6 @@ if [ "$1" = "check" ]; then
     exit 0
 fi
 
-if [ -z "$HOST_NAME" ]; then
-    echo "HOST_NAME missing"
-    exit 1
-fi
-
-HOST_IP=${HOST_IP:-$(hostname -i)}
-
-function create-host() {
-    echo "creating host"
-    foreman-curl /api/v2/hosts -X POST -d '{"host":{"name":"'$HOST_NAME'","managed":false,"interfaces_attributes":[{"ip":"'$HOST_IP'","primary":true}]}}'
-}
-
-function update-host() {
-    echo "updating host"
-    INTERFACE_ID=$(foreman-curl /api/v2/hosts/$HOST_NAME | sed 's/.*"interfaces":\[{"id":\([0-9]*\).*/\1/')
-    if ! echo $INTERFACE_ID | grep -P '^[0-9]+$' > /dev/null; then
-        echo "Could not get the interface id for update";
-        exit 2
-    fi
-    foreman-curl /api/v2/hosts/$HOST_NAME -X PUT -d '{"host":{"interfaces_attributes":[{"id":"'$INTERFACE_ID'","ip":"'$HOST_IP'","primary":true}]}}'
-}
-
 function exchange-keys() {
     PROXY_PUBKEY=~/.ssh/id_rsa_foreman_proxy.pub
     proxy-curl /ssh/pubkey > $PROXY_PUBKEY
@@ -85,18 +64,26 @@ function exchange-keys() {
     foreman-curl /api/v2/hosts/$HOST_NAME -X PUT -d '{"host":{"host_parameters_attributes":[{"id":"'$CLIENT_PUBKEY_PARAM_ID'","name":"'$CLIENT_PUBKEY_PARAM'","value":"'"$CLIENT_PUBKEY"'"}]}}'
 }
 
-host_details_status=$(foreman-status /api/v2/hosts/$HOST_NAME)
+if [ -z "$HOST_NAME" ]; then
+    echo "HOST_NAME missing"
+    exit 1
+fi
 
-case "$host_details_status" in
-    200)
-    update-host
-    ;;
-    404)
-    create-host
-    ;;
-    *)
-    echo Unexpected http_code $host_details_status when checking host details
-    ;;
-esac
+#host_details_status=$(foreman-status /api/v2/hosts/$HOST_NAME)
+#
+#case "$host_details_status" in
+#    200)
+#    update-host
+#    ;;
+#    404)
+#    create-host
+#    ;;
+#    *)
+#    echo Unexpected http_code $host_details_status when checking host details
+#    ;;
+#esac
+
+echo "uploading facts"
+`/upload_facts.rb`
 
 exchange-keys
