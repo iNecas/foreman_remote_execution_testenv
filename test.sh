@@ -80,7 +80,8 @@ _run() {
     if ! PROXY_URL=$PROXY_URL FOREMAN_URL=$FOREMAN_URL FOREMAN_USER=$FOREMAN_USER FOREMAN_PASSWORD=$FOREMAN_PASSWORD ./scripts/register-host.sh check; then
         exit 4
     fi
-    CID=$(docker run -d -e "HOST_NAME=$HOST_NAME" -e "PROXY_URL=$PROXY_URL" -e "FOREMAN_URL=$FOREMAN_URL" -e "FOREMAN_USER=$FOREMAN_USER" -e "FOREMAN_PASSWORD=$FOREMAN_PASSWORD" --name $CONTAINER_NAME $IMAGE_NAME)
+    CID=$(docker run -d -e "HOST_NAME=$HOST_NAME" -e "PROXY_URL=$PROXY_URL" -e "FOREMAN_URL=$FOREMAN_URL" -e "FOREMAN_USER=$FOREMAN_USER" \
+      -e "FOREMAN_PASSWORD=$FOREMAN_PASSWORD" --name $CONTAINER_NAME --hostname ${HOST_NAME} $IMAGE_NAME)
     IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CID)
     if [ -z "$IP" ]; then
         echo "Could not get the container IP address"
