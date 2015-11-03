@@ -65,7 +65,8 @@ _build() {
 }
 
 _run() {
-    if docker inspect $CONTAINER_NAME &> /dev/null; then
+    MAC=$(docker inspect --format '{{ .NetworkSettings.MacAddress }}' $CONTAINER_NAME 2>/dev/null || :)
+    if [ -n "$MAC" ]; then
         echo "Container $CONTAINER_NAME exist"
         if [ "$FORCE" = "1" ]; then
             echo "forced deletion"
@@ -77,11 +78,10 @@ _run() {
 
     HOST_NAME=$(echo $CONTAINER_NAME | sed 's/_/-/g')
 
-    if ! PROXY_URL=$PROXY_URL FOREMAN_URL=$FOREMAN_URL FOREMAN_USER=$FOREMAN_USER FOREMAN_PASSWORD=$FOREMAN_PASSWORD ./scripts/register-host.sh check; then
+    if ! PROXY_URL=$PROXY_URL FOREMAN_URL=$FOREMAN_URL ./scripts/register-host.sh check; then
         exit 4
     fi
-    CID=$(docker run -d -e "HOST_NAME=$HOST_NAME" -e "PROXY_URL=$PROXY_URL" -e "FOREMAN_URL=$FOREMAN_URL" -e "FOREMAN_USER=$FOREMAN_USER" \
-      -e "FOREMAN_PASSWORD=$FOREMAN_PASSWORD" --name $CONTAINER_NAME --hostname ${HOST_NAME} $IMAGE_NAME)
+    CID=$(docker run -d --mac-address "$MAC" -h "$HOST_NAME" -e "HOST_NAME=$HOST_NAME" -e "PROXY_URL=$PROXY_URL" -e "FOREMAN_URL=$FOREMAN_URL" --name $CONTAINER_NAME $IMAGE_NAME)
     IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CID)
     if [ -z "$IP" ]; then
         echo "Could not get the container IP address"
