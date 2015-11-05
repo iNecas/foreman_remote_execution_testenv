@@ -2,3 +2,6 @@ ssh/id_rsa_*
 ssh/known_hosts
 settings.sh
 .idea
+foreman-playbook-*
+foreman-inventories
+events
