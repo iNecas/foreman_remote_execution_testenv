@@ -330,7 +330,8 @@ def list_groups():
                 docker_volumes_rw=inspect.get('VolumesRW'),
             )
 
-            hostvars[name].update(container_info)
+            if container_info['ansible_ssh_host']:
+                hostvars[name].update(container_info)
 
     groups['docker_hosts'] = [host.get('base_url') for host in hosts if host.get('base_url')]
     groups['_meta'] = dict()
