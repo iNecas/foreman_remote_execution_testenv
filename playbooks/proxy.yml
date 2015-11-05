@@ -25,5 +25,5 @@
 - hosts: foreman
   tasks:
     - name: Register the proxy
-      shell: "curl -u admin:changeme -X POST -H 'Content-Type: Application/json' -d '{\"smart_proxy\":{\"name\":\"{{hostvars[item]['ansible_ssh_host']}}\",\"url\":\"http://{{hostvars[item]['ansible_ssh_host']}}:9292\"}}' http://localhost:3000/api/v2/smart_proxies"
+      shell: "curl -u admin:changeme -X POST -H 'Content-Type: Application/json' -d '{\"smart_proxy\":{\"name\":\"{{hostvars[item]['ansible_fqdn']}}\",\"url\":\"http://{{hostvars[item]['ansible_ssh_host']}}:9292\"}}' http://localhost:3000/api/v2/smart_proxies"
       with_items: groups.proxy
