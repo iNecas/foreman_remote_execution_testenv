@@ -1,0 +1,29 @@
+- hosts: proxy
+  tasks:
+    - name: Install Screen
+      yum: name=screen state=present
+    - name: Install EPEL repo.
+      yum:
+        name: "http://dl.fedoraproject.org/pub/epel/epel-release-latest-{{ ansible_distribution_major_version }}.noarch.rpm"
+        state: present
+    - name: Install Foreman repo
+      yum:
+        name: "http://yum.theforeman.org/releases/1.9/el7/x86_64/foreman-release.rpm"
+        state: present
+    - name: Install Foreman Proxy
+      yum: name={{item}} state=present
+      with_items:
+        - foreman-proxy
+        - puppet
+    - name: Configure Foreman Proxy
+      template: src=templates/puppet.yml dest=/etc/foreman-proxy/settings.d/puppet.yml
+    - name: Run Foreman Proxy
+      script: scripts/proxy-start.sh
+      args:
+        chdir: /usr/share/smart-proxy
+
+- hosts: foreman
+  tasks:
+    - name: Register the proxy
+      shell: "curl -u admin:changeme -X POST -H 'Content-Type: Application/json' -d '{\"smart_proxy\":{\"name\":\"{{hostvars[item]['ansible_ssh_host']}}\",\"url\":\"http://{{hostvars[item]['ansible_ssh_host']}}:9292\"}}' http://localhost:3000/api/v2/smart_proxies"
+      with_items: groups.proxy
