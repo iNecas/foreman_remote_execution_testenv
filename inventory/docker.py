@@ -286,18 +286,6 @@ def list_groups():
             inspect = client.inspect_container(id)
             running = inspect.get('State', dict()).get('Running')
 
-            groups[id].append(name)
-            groups[name].append(name)
-            if not short_id in groups.keys():
-                groups[short_id].append(name)
-            if hostname:
-                groups[hostname].append(name)
-
-            if running is True:
-                groups['running'].append(name)
-            else:
-                groups['stopped'].append(name)
-
             try:
                 port = client.port(container, ssh_port)[0]
             except (IndexError, AttributeError, TypeError):
@@ -331,7 +319,22 @@ def list_groups():
             )
 
             if container_info['ansible_ssh_host']:
-                hostvars[name].update(container_info)
+                continue
+
+            groups[id].append(name)
+            groups[name].append(name)
+            if not short_id in groups.keys():
+                groups[short_id].append(name)
+            if hostname:
+                groups[hostname].append(name)
+
+            if running is True:
+                groups['running'].append(name)
+            else:
+                groups['stopped'].append(name)
+
+
+            hostvars[name].update(container_info)
 
     groups['docker_hosts'] = [host.get('base_url') for host in hosts if host.get('base_url')]
     groups['_meta'] = dict()
