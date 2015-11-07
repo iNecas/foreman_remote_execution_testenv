@@ -318,7 +318,7 @@ def list_groups():
                 docker_volumes_rw=inspect.get('VolumesRW'),
             )
 
-            if container_info['ansible_ssh_host']:
+            if not container_info['ansible_ssh_host']:
                 continue
 
             groups[id].append(name)
