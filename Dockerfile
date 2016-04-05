@@ -7,6 +7,7 @@ MAINTAINER Ivan Nečas <inecas@redhat.com>
 
 RUN rpm -Uvh  "http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
 RUN yum install -y hostname openssh-server openssh-clients facter
+RUN echo UseDNS no >> /etc/ssh/sshd_config
 
 ADD ssh/id_rsa_server /etc/ssh/ssh_host_rsa_key
 ADD ssh/id_rsa_server.pub /etc/ssh/ssh_host_rsa_key.pub
