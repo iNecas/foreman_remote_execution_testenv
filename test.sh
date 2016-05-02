@@ -76,16 +76,14 @@ _run() {
 
     HOST_NAME=$(echo $CONTAINER_NAME | sed 's/_/-/g')
 
-    if ! PROXY_URL=$PROXY_URL FOREMAN_URL=$FOREMAN_URL ./scripts/register-host.sh check; then
-        exit 4
-    fi
-    CID=$(docker run -d --mac-address "$MAC" -h "$HOST_NAME" -e "HOST_NAME=$HOST_NAME" -e "PROXY_URL=$PROXY_URL" -e "FOREMAN_URL=$FOREMAN_URL" --name $CONTAINER_NAME $IMAGE_NAME)
+    CID=$(docker run -d --mac-address "$MAC" -h "$HOST_NAME" -e "HOST_NAME=$HOST_NAME" -e "PUPPET_MASTER=$(hostname -f)" -e "CAPSULE_HOSTLINE=$MASTER_IP $(hostname -f)" -e "FOREMAN_URL=$FOREMAN_URL" --name $CONTAINER_NAME $IMAGE_NAME)
     IP=$(docker inspect --format '{{ .NetworkSettings.IPAddress }}' $CID)
     if [ -z "$IP" ]; then
         echo "Could not get the container IP address"
         exit 3
     fi
     echo "IP address of '$CONTAINER_NAME' is $IP"
+    touch $KNOWN_HOSTS
     sed -i /^$IP/d $KNOWN_HOSTS
     echo $IP $(cat ${SERVER_RSA}.pub) >> $KNOWN_HOSTS
 }
