@@ -2,3 +2,4 @@ ssh/id_rsa_*
 ssh/known_hosts
 settings.sh
 .idea
+ssh/config

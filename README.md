@@ -11,6 +11,9 @@ Setup
 cp settings.sh.example settings.sh
 # edit settings to update paths to foreman and proxy
 
+cp ssh/config.example ssh/config
+# default ssh config works in most cases
+
 # build certs and docker image
 ./test.sh build
 ```
