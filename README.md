@@ -9,10 +9,16 @@ Setup
 
 ```
 cp settings.sh.example settings.sh
-# edit settings to update paths to foreman and proxy
+# edit settings to update paths to foreman and proxy 
+# check if port where smart proxy running  is same as port in settings.sh (e.g 8000)
 
 # build certs and docker image
 ./test.sh build
+
+#copy foreman_remote_execution_testenv/ssh/id_rsa_foreman_proxy  
+#and foreman_remote_execution_testenv/ssh/id_rsa_foreman_proxy.pub 
+#to directory ~/.ssh
+
 ```
 
 Usage
