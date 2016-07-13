@@ -11,8 +11,16 @@ Setup
 cp settings.sh.example settings.sh
 # edit settings to update paths to foreman and proxy
 
+# copy the generated keys to your local directory
+cp ssh/id_rsa_foreman_proxy* ~/.ssh
+
 # build certs and docker image
 ./test.sh build
+
+**In foreman directory**
+
+Add a line that contains `:restrict_registered_smart_proxies: false` to file `config/settings.yaml`
+
 ```
 
 Usage
